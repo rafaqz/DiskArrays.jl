@@ -121,7 +121,8 @@ function test_broadcast(a_disk1)
   a_disk2 = _DiskArray(rand(1:10,1,9), chunksize=(1,3))
   a_mem   = reshape(1:2,1,1,2);
 
-  s = a_disk1 .+ a_disk2 .* Ref(2) ./ (2,)
+  # Test broadcase over Ref, Number, and length 1 Tuple and axis 1 length Tuple
+  s = a_disk1 .+ a_disk2 .* Ref(2) ./ (2,) .* ntuple(_ -> 1, size(a_disk1, 1)) 
   #Test lazy broadcasting
   @test s isa DiskArrays.BroadcastDiskArray
   @test getindex_count(a_disk1)==0
@@ -139,7 +140,8 @@ function test_broadcast(a_disk1)
   @test eltype(s) == Float64
   #And now do the computation with Array as a sink
   aout = zeros(10,9,2)
-  aout .= s2 .* 2 ./ Ref(2)
+  # Test broadcase over Ref, Number, and axis 1 length Tuple
+  aout .= s2 .* 2 ./ Ref(2) .* ntuple(_ -> 1, size(a_disk1, 1))
   #Test if the result is correct
   @test aout == (trueparent(a_disk1) .+ trueparent(a_disk2))./a_mem
   @test getindex_count(a_disk1)==6
@@ -206,6 +208,22 @@ end
 @testset "Broadcast" begin
   a_disk1 = _DiskArray(rand(10,9,2), chunksize=(5,3,2))
   test_broadcast(a_disk1)
+
+  a_disk1 = _DiskArray([1 10; 2 20; 3 30; 4 40], chunksize=(1, 1))
+  a_disk1 .* [1, 2, 3, 4] |> collect
+
+  a_disk2 = _DiskArray([1 10; 2 20; 3 30; 4 40], chunksize=(2, 2))
+  a_disk2 .* [1, 2, 3, 4] |> collect
+  gc = DiskArrays.eachchunk(a_disk2)
+  a_disk2 = _DiskArray([1 10; 2 20], chunksize=(2, 2))
+  a_disk2 .* [1, 2] |> collect
+
+  [1 10; 2 20; 3 30; 4 40] .* [1, 2, 3, 4]
+
+  [1 10; 2 20; 3 30; 4 40] .* (1, 2, 3, 4)
+
+  [1 10; 2 20; 3 30; 4 40] .* (2, 3, 4, 5)
+
 end
 
 @testset "Broadcast with length 1 final dim" begin
@@ -244,6 +262,7 @@ import Base.PermutedDimsArrays.invperm
   a_disk1 = permutedims(_DiskArray(rand(9,2,10), chunksize=(3,2,5)),p)
   test_broadcast(a_disk1)
   @test PermutedDiskArray(a_disk1.a) === a_disk1
+
 end
 
 @testset "Unchunked String arrays" begin

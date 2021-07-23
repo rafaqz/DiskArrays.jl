@@ -13,7 +13,7 @@ struct BroadcastDiskArray{T,N,BC<:Broadcasted{<:ChunkStyle{N}}} <: AbstractDiskA
 end
 Base.size(bc::BroadcastDiskArray) = size(bc.bc)
 function DiskArrays.readblock!(a::BroadcastDiskArray,aout,i::OrdinalRange...)
-  argssub = map(arg->subsetarg(arg,i),a.bc.args)
+  argssub = map(arg -> subsetarg(arg,i),a.bc.args)
   aout .= a.bc.f.(argssub...)
 end
 Base.broadcastable(bc::BroadcastDiskArray) = bc.bc
@@ -61,6 +61,8 @@ function common_chunks(s,args...)
   end
 end
 subsetarg(x, a) = x
+# Tuple length >= 2
+subsetarg(x::Tuple{<:Any,<:Any,Vararg}, a) = x[a[1]]
 function subsetarg(x::AbstractArray,a)
   ashort = maybeonerange(size(x),a)
   view(x,ashort...) #Maybe making a copy here would be faster, need to check...
